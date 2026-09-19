@@ -1,0 +1,8 @@
+x = 4
+if x > 2:
+    if x < 5:
+        print("A")
+    else:
+        print("B")
+else:
+    print("C")
