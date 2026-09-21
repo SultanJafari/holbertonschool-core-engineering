@@ -3,5 +3,5 @@
 
 
 class Square:
-    """"""
+    """SUltan."""
     pass
