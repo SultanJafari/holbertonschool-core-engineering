@@ -7,6 +7,6 @@ valid = version == 3
 name = "Sultan_Al Jafari"
 print(f"Language: {language}")
 print(f"Version: {version}")
-print(f"Pi approx: {pi:.3f}")
+print(f"Pi approx: {pi:.0f}") # :.0f or :.3f = هذه اطبع لي الرقم كم خانة بعد الفانقطة
 print(f"Computation valid: {valid}")
 print(f"Name :{name}")
