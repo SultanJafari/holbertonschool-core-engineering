@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>نظام الكاشير الموحد الذكي</title>
+    <style>
+        body { font-family: Tahoma, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; text-align: center; }
+        .container { max-width: 600px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0px 4px 15px rgba(0,0,0,0.1); }
+        .tabs { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; }
+        .tab-btn { padding: 10px 20px; cursor: pointer; border: none; background: #e0e0e0; font-weight: bold; border-radius: 6px; font-size: 16px; }
+        .tab-btn.active { background: #007bff; color: white; }
+        .section { display: none; }
+        .section.active { display: block; }
+        input, select, button { padding: 12px; margin: 8px 0; width: 92%; font-size: 16px; border-radius: 6px; border: 1px solid #ccc; }
+        button.action-btn { background: #28a745; color: white; border: none; cursor: pointer; font-weight: bold; }
+        button.action-btn:hover { background: #218838; }
+        .circles-container { display: flex; justify-content: center; gap: 15px; margin-top: 20px; flex-wrap: wrap; }
+        .circle { width: 65px; height: 65px; border-radius: 50%; background: #ccc; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; cursor: pointer; transition: 0.3s; font-size: 18px; }
+        .circle.paid { background: #28a745; }
+        .receipt-box { background: #f9f9f9; border: 1px dashed #007bff; padding: 15px; margin-top: 15px; text-align: right; border-radius: 8px; display: none; }
+        .negative { color: #dc3545; font-weight: bold; }
+        .positive { color: #28a745; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>نظام الكاشير الذكي (حلول الإحراج والزحمة)</h2>
+
+    <!-- الأزرار للتبديل بين النظامين -->
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('restaurant', this)">1. تقسيم فاتورة المطعم</button>
+        <button class="tab-btn" onclick="switchTab('store', this)">2. البطاقة الذكية والديون (البقالة)</button>
+    </div>
+
+    <!-- النظام الأول: المطاعم والتقسيم -->
+    <div id="restaurant-section" class="section active">
+        <h3>قسمة المبلغ الجماعية السريعة</h3>
+        <div id="setup-bill">
+            <input type="number" id="total-bill" placeholder="المبلغ الإجمالي للفاتورة (ريال)">
+            <input type="number" id="count-people" placeholder="عدد الأشخاص">
+            <button class="action-btn" onclick="initBill()">بدء التقسيم البصري</button>
+        </div>
+
+        <div id="payment-bill" style="display:none;">
+            <h4>حصة الفرد الواحد: <span id="per-person-val" class="positive">0</span> ريال</h4>
+            <p>اضغط على الدائرة فور سداد الشخص (لتتحول أخضر):</p>
+            <div class="circles-container" id="circles"></div>
+            <div id="bill-msg" style="margin-top: 20px; font-weight: bold; font-size: 18px;"></div>
+            <button onclick="resetBill()" style="background:#6c757d; color:white; border:none; margin-top:15px; cursor:pointer;">فاتورة جديدة</button>
+        </div>
+    </div>
+
+    <!-- النظام الثاني: البقالة والبطاقة الذكية -->
+    <div id="store-section" class="section">
+        <h3>دفتر الديون الرقمي بالبطاقة الذكية (بدون إحراج)</h3>
+        <div id="card-scan-box">
+            <input type="text" id="card-id-input" placeholder="مرر البطاقة أو أدخل الكود (مثال: CARD123)">
+            <button class="action-btn" onclick="scanCard()">فحص البطاقة وسحب البيانات</button>
+        </div>
+
+        <div id="customer-actions" style="display:none; background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 10px;">
+            <p>اسم الزبون: <b id="cust-name"></b></p>
+            <p>الرصيد الحالي: <span id="cust-balance"></span> ريال</p>
+
+            <input type="number" id="tx-amount" placeholder="قيمة المشتريات الحالية (ريال)">
+            <div style="display: flex; gap: 10px; justify-content: center;">
+                <button style="background: #dc3545; color: white; border:none; cursor:pointer;" onclick="processTransaction('debt')">تسجيل كدين (على الحساب 🤫)</button>
+                <button style="background: #28a745; color: white; border:none; cursor:pointer;" onclick="processTransaction('pay')">تسديد جزء/كل المبلغ 💰</button>
+            </div>
+        </div>
+
+        <div id="store-receipt" class="receipt-box">
+            <h4>إيصال المعاملة السرية:</h4>
+            <div id="receipt-details"></div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+// تبديل التبويبات
+function switchTab(tabName, btn) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(tabName + '-section').classList.add('active');
+    btn.classList.add('active');
+}
+
+// --- دوال النظام الأول (المطعم) ---
+async function initBill() {
+    let total = document.getElementById('total-bill').value;
+    let count = document.getElementById('count-people').value;
+    if(!total || !count) return alert('الرجاء إدخال المبلغ وعدد الأشخاص');
+
+    let res = await fetch('/api/bill/set', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({total, count})
+    });
+    let data = await res.json();
+    renderBillUI(data);
+}
+
+async function payPerson(index) {
+    let res = await fetch(`/api/bill/pay/${index}`, {method: 'POST'});
+    let data = await res.json();
+    renderBillUI(data);
+}
+
+function renderBillUI(data) {
+    document.getElementById('setup-bill').style.display = 'none';
+    document.getElementById('payment-bill').style.display = 'block';
+    document.getElementById('per-person-val').innerText = data.per_person;
+
+    let container = document.getElementById('circles');
+    container.innerHTML = '';
+    let allPaid = true;
+
+    data.statuses.forEach((isPaid, index) => {
+        let div = document.createElement('div');
+        div.className = `circle ${isPaid ? 'paid' : ''}`;
+        div.innerText = `#${index + 1}`;
+        div.onclick = () => payPerson(index);
+        container.appendChild(div);
+        if(!isPaid) allPaid = false;
+    });
+
+    let msgDiv = document.getElementById('bill-msg');
+    if(allPaid && data.statuses.length > 0) {
+        msgDiv.innerHTML = '<span class="positive">تم سداد الفاتورة بالكامل بنجاح! ✅</span>';
+    } else {
+        msgDiv.innerHTML = '<span style="color:#e0a800;">بانتظار اكتمال الدفعات...</span>';
+    }
+}
+
+function resetBill() {
+    document.getElementById('setup-bill').style.display = 'block';
+    document.getElementById('payment-bill').style.display = 'none';
+    document.getElementById('total-bill').value = '';
+    document.getElementById('count-people').value = '';
+}
+
+// --- دوال النظام الثاني (البقالة والبطاقة) ---
+let currentCardId = "";
+
+async function scanCard() {
+    let cardId = document.getElementById('card-id-input').value.trim();
+    if(!cardId) return alert('الرجاء إدخال رقم البطاقة أو تمريرها');
+
+    let res = await fetch('/api/store/scan', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({card_id: cardId})
+    });
+    let data = await res.json();
+
+    if(data.success) {
+        currentCardId = cardId;
+        document.getElementById('cust-name').innerText = data.customer.name;
+        let balElem = document.getElementById('cust-balance');
+        let bal = data.customer.balance;
+        balElem.innerText = bal;
+        balElem.className = bal < 0 ? 'negative' : 'positive';
+
+        document.getElementById('customer-actions').style.display = 'block';
+        document.getElementById('store-receipt').style.display = 'none';
+    } else {
+        alert(data.message);
+        document.getElementById('customer-actions').style.display = 'none';
+    }
+}
+
+async function processTransaction(type) {
+    let amount = document.getElementById('tx-amount').value;
+    if(!amount || amount <= 0) return alert('الرجاء إدخال مبلغ صحيح');
+
+    let res = await fetch('/api/store/transaction', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            card_id: currentCardId,
+            amount: parseFloat(amount),
+            type: type,
+            store_name: "بقالة الحي الذكية"
+        })
+    });
+    let data = await res.json();
+
+    if(data.success) {
+        alert(data.message);
+        // تحديث الرصيد الواضح
+        let balElem = document.getElementById('cust-balance');
+        balElem.innerText = data.new_balance;
+        balElem.className = data.new_balance < 0 ? 'negative' : 'positive';
+
+        // عرض الإيصال السري المصغر
+        let r = data.receipt;
+        let receiptHtml = `
+            <b>المكان:</b> ${r.store}<br>
+            <b>الاسم:</b> ${r.name}<br>
+            <b>النوع:</b> ${r.type === 'debt' ? 'تسجيل دين جديد' : 'عملية سداد'}<br>
+            <b>المبلغ:</b> ${r.amount} ريال<br>
+            <b>الرصيد الإجمالي:</b> <span class="${r.new_balance < 0 ? 'negative' : 'positive'}">${r.new_balance} ريال</span><br>
+            <b>الوقت:</b> ${r.time}
+        `;
+        document.getElementById('receipt-details').innerHTML = receiptHtml;
+        document.getElementById('store-receipt').style.display = 'block';
+        document.getElementById('tx-amount').value = '';
+    } else {
+        alert(data.message);
+    }
+}
+</script>
+
+</body>
+</html>
