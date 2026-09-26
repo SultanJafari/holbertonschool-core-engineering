@@ -203,6 +203,7 @@ async function processTransaction(type) {
             <b>المبلغ:</b> ${r.amount} ريال<br>
             <b>الرصيد الإجمالي:</b> <span class="${r.new_balance < 0 ? 'negative' : 'positive'}">${r.new_balance} ريال</span><br>
             <b>الوقت:</b> ${r.time}
+
         `;
         document.getElementById('receipt-details').innerHTML = receiptHtml;
         document.getElementById('store-receipt').style.display = 'block';
