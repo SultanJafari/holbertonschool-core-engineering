@@ -4,7 +4,6 @@ Module for append and printing text files using UTF-8 encoding.
 """
 
 
-
 def append_write(filename="", text=""):
     """
     append a text file and prints its content to standard output.
