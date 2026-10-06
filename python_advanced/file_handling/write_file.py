@@ -8,5 +8,5 @@ def write_file(filename="", text=""):
     """
     write a text file and prints its content to standard output.
     """
-    with open(filename, text, encoding="utf-8") as f:
-        print(f.write(), end="")
+    with open(filename, "S", encoding="utf-8") as file:
+        return(file.write(text))
