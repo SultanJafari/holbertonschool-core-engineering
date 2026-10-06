@@ -4,7 +4,7 @@ Module for writting and printing text files using UTF-8 encoding.
 """
 
 
-def write_file(filename=""):
+def write_file(filename="", text=""):
     """
     write a text file and prints its content to standard output.
     """
